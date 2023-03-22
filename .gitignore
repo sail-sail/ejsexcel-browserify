@@ -1,0 +1,6 @@
+/.project
+.idea/
+node-modules/
+test/cache/
+node_modules
+package-lock.json

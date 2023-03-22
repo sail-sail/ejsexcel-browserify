@@ -1,0 +1,33 @@
+{
+  "author": "Sail",
+  "homepage": "https://github.com/sail-sail/ejsexcel-browserify",
+  "name": "ejsexcel-browserify",
+  "version": "4.0.0",
+  "main": "dist/ejsexcel.min.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "browserify ejsexcel.js -s ejsexcel -o dist/ejsexcel.min.js && terser dist/ejsexcel.min.js -o dist/ejsexcel.min.js"
+  },
+  "readme": "README.md",
+  "license": "MIT",
+  "description": "Intelligent report system, browserify export excel, ejsExcel",
+  "bugs": {
+    "url": "https://github.com/sail-sail/ejsexcel-browserify",
+    "email": "151263555@qq.com"
+  },
+  "keywords": [
+    "ejsexcel",
+    "ejs",
+    "excel",
+    "browserify"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sail-sail/ejsexcel-browserify.git"
+  },
+  "devDependencies": {
+    "browserify": "17.0.0",
+    "pako": "2.1.0",
+    "terser": "5.16.6"
+  }
+}
