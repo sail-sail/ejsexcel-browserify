@@ -27,7 +27,7 @@ npm install ejsexcel-browserify
     ];
     
     //用数据源(对象)data渲染Excel模板
-    const buffer2 = await ejsexcel.renderExcel(buffer, data);
+    const buffer2 = await renderExcel(buffer, data);
     
     const blob = new Blob([ buffer2 ], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
