@@ -11,30 +11,62 @@ npm install ejsexcel-browserify
 ### How to test?
 - test/test.xlsx 为完整示例 demo
 
-- e.g
-   ```js
-   import { renderExcel } from "ejsexcel-browserify";
-   import saveAs from "file-saver";
-   
-   //获得Excel模板的buffer对象
-    const res = await fetch("./test.xlsx");
-    const buffer = await res.arrayBuffer();
-    
-    //数据源, 可以是任意对象
-    const data = [
-      [{"dpt_des":"开发部","doc_dt":"2013-09-09","doc":"a001"}],
-      [{"pt":"pt1","des":"des1","due_dt":"2013-08-07","des2":"2013-12-07"}]
-    ];
-    
-    //用数据源(对象)data渲染Excel模板
-    const buffer2 = await renderExcel(buffer, data);
-    
-    const blob = new Blob([ buffer2 ], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    
-    saveAs(blob, "示例");
-   ```
+- 示例
+```js
+import { renderExcel } from "ejsexcel-browserify";
+import saveAs from "file-saver";
+
+//获得Excel模板的buffer对象
+const res = await fetch("./test.xlsx");
+const buffer = await res.arrayBuffer();
+
+//数据源, 可以是任意对象
+const data = [
+  [{"dpt_des":"开发部","doc_dt":"2013-09-09","doc":"a001"}],
+  [{"pt":"pt1","des":"des1","due_dt":"2013-08-07","des2":"2013-12-07"}]
+];
+
+//用数据源(对象)data渲染Excel模板
+const buffer2 = await renderExcel(buffer, data);
+
+const blob = new Blob([ buffer2 ], {
+  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+});
+
+saveAs(blob, "示例");
+```
+
+- 示例使用weborker渲染大型报表
+```js
+import saveAs from "file-saver";
+import { useWebWorkerFn } from "@vueuse/core";
+
+const { workerFn } = useWebWorkerFn(
+  async function (data) {
+    // 如果第一个参数是字符串, 则会自动通过 fetch 加载该文件, 以此减少线程间传输数据量
+    // 如果第二个参数是字符串, 则会自动通过 fetch 加载为json作为数据源, 以此减少线程间传输数据量
+    return await ejsexcel.renderExcel(`${ location.origin }/test.xlsx`, data);
+  },
+  {
+    dependencies: [
+      `${ location.origin }/ejsexcel.min.js`,
+    ],
+  },
+);
+
+//数据源, 可以是任意对象
+const data = [
+  [{"dpt_des":"开发部","doc_dt":"2013-09-09","doc":"a001"}],
+  [{"pt":"pt1","des":"des1","due_dt":"2013-08-07","des2":"2013-12-07"}]
+];
+
+const buffer2 = await workerFn(data);
+
+const blob = new Blob([ buffer2 ], {
+  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+});
+saveAs(blob, "示例2");
+```
 
 ## Syntax
 

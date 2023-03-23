@@ -116,9 +116,29 @@ async function renderExcel(exlBuf, _data_, opt) {
   if (exlBuf == null) {
     throw new Error("renderExcel arguments[0] is null");
   }
-  if (isString(exlBuf)) {
-    const res = await fetch(exlBuf);
-    exlBuf = Buffer.from(res.arrayBuffer());
+  if (isString(exlBuf) && isString(_data_) && _data_.startsWith("http")) {
+    [
+      exlBuf,
+      _data_,
+    ] = await Promise.all([
+      (async function() {
+        const res = await fetch(exlBuf);
+        return Buffer.from(await res.arrayBuffer());
+      })(),
+      (async function() {
+        const res = await fetch(_data_);
+        return await res.json();
+      })(),
+    ]);
+  } else {
+    if (isString(exlBuf)) {
+      const res = await fetch(exlBuf);
+      exlBuf = Buffer.from(await res.arrayBuffer());
+    }
+    if (isString(_data_) && _data_.startsWith("http")) {
+      const res = await fetch(_data_);
+      _data_ = await res.json();
+    }
   }
   var anonymous, attr, attr0, attr_r, begin, buffer2, cEl, cElArr, cItem, data, doc, documentElement, end, endElement, entry, hyperlink, hyperlinksDomEl, hzip, i, i1, idx, j1, key, keyArr, l, len1, len10, len11, len12, len13, len14, len15, len2, len3, len4, len5, len6, len7, len8, len9, m, m_c_i, mciNum, mciNumArr, mergeCell, mergeCellsDomEl, n, o, p, pageMarginsDomEl, phoneticPr, phoneticPrDomEl, q, r, reXmlEq, ref, ref0, ref1, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, refArr, row, rowEl, rowElArr, sharedStrings2, sheetBuf, sheetBuf2, sheetDataDomEl, sheetDataElementState, sheetEntrieRels, sheetEntries, sheetObj, shsEntry, shsObj, shsStr, si, si2, sirTp, startElement, str, str2, u, updateEntryAsync, v, w, workbookBuf, workbookEntry, workbookRelsBuf, workbookRelsEntry, x, xjOpTmp, y, z;
   data = {
