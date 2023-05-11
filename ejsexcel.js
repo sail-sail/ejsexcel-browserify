@@ -88,7 +88,7 @@ function Promise_fromStandard(cb, t) {
 
 const inflateRawAsync = Promise_fromStandard(zlib.inflateRaw, zlib);
 
-const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<%\nvar _data_ = _args._data_;\nvar _charPlus_ = _args._charPlus_;\nvar _charToNum_ = _args._charToNum_;\nvar _str2Xml_ = _args._str2Xml_;\nvar _hideSheet_ = _args._hideSheet_;\nvar _showSheet_ = _args._showSheet_;\nvar _deleteSheet_ = _args._deleteSheet_;\nvar _ps_ = _args._ps_;\nvar _pi_ = _args._pi_;\nvar _pf_ = _args._pf_;\nvar _acVar_ = _args._acVar_;\nvar _r = 0;\nvar _c = 0;\nvar _row = 0;\nvar _col = \"\";\nvar _rc = \"\";\nvar _img_ = _args._img_;\nvar _qrcode_ = _args._qrcode_;\nvar _mergeCellArr_ = [];\nvar _mergeCellFn_ = function(mclStr) {\n  _mergeCellArr_.push(mclStr);\n};\nvar _hyperlinkArr_ = [];\nvar _outlineLevel_ = _args._outlineLevel_;\n%>";
+const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<%\nvar _data_ = _args._data_;\nvar _charPlus_ = _args._charPlus_;\nvar autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;\nvar _charToNum_ = _args._charToNum_;\nvar _str2Xml_ = _args._str2Xml_;\nvar _hideSheet_ = _args._hideSheet_;\nvar _showSheet_ = _args._showSheet_;\nvar _deleteSheet_ = _args._deleteSheet_;\nvar _ps_ = _args._ps_;\nvar _pi_ = _args._pi_;\nvar _pf_ = _args._pf_;\nvar _acVar_ = _args._acVar_;\nvar _r = 0;\nvar _c = 0;\nvar _row = 0;\nvar _col = \"\";\nvar _rc = \"\";\nvar _img_ = _args._img_;\nvar _qrcode_ = _args._qrcode_;\nvar _mergeCellArr_ = [];\nvar _mergeCellFn_ = function(mclStr) {\n  _mergeCellArr_.push(mclStr);\n};\nvar _hyperlinkArr_ = [];\nvar _outlineLevel_ = _args._outlineLevel_;\n%>";
 
 const sharedStrings2Prx = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"1\" uniqueCount=\"1\">";
 
@@ -181,12 +181,73 @@ async function renderExcel(exlBuf, _data_, opt) {
       };
       return "";
     }
+    let hasPf = false;
+    for (i = l = ref2 = buf.length - 1; ref2 <= -1 ? l < -1 : l > -1; i = ref2 <= -1 ? ++l : --l) {
+      tmpStr = buf[i].toString();
+      if (/<f>/gm.test(tmpStr) && !/<\/f>/gm.test(tmpStr)) {
+        hasPf = true;
+        break;
+      }
+      if (/<c\s+/gm.test(tmpStr)) {
+        break;
+      }
+    }
+    if (hasPf) {
+      for (i = l = ref2 = buf.length - 1; ref2 <= -1 ? l < -1 : l > -1; i = ref2 <= -1 ? ++l : --l) {
+        tmpStr = buf[i].toString();
+        if (/<c\s+/gm.test(tmpStr)) {
+          buf[i] = replaceLast(tmpStr, /<c\s+/gm, `<c t="str" `);
+          break;
+        }
+      }
+      val = str2Xml(str);
+      str = `</f><v>${ str }`;
+      buf.push = function (puhStr) {
+        var index;
+        puhStr = puhStr.toString();
+        if (puhStr.indexOf("</f>") !== -1) {
+          index = Array.prototype.push.apply(buf, [puhStr.replace(/<\/f>/m, "</v>")]);
+          buf.push = Array.prototype.push;
+        } else {
+          index = Array.prototype.push.apply(buf, [puhStr]);
+        }
+        return index;
+      };
+      return str;
+    }
     val = str2Xml(str);
     sharedStrings2.push("<si><t xml:space=\"preserve\">" + val + "</t></si>");
     index = data._acVar_._ss_len;
     data._acVar_._ss_len++;
     return String(index);
   };
+
+  var autoMergeCellArr = {};
+  data._autoMergeCell_ = function (o, parent, name, col, row, f) {
+    //模板里调用需要添加以下语句，其中后三个参数不变
+    //《%autoMergeCell(r,null,"XZ",_col,_row,_mergeCellArr_)%》
+    const key = parent+"_"+name
+    const now = {col_s : col,col_e :col, row_s :row ,row_e :row,p : o[parent],v:o[name]}
+    const last = autoMergeCellArr[key]
+    if(last === undefined || now.p!==last.p || now.v!==last.v){
+      autoMergeCellArr[key]=now;
+      return;
+    }
+    last.col_e = col
+    last.row_e = row
+    last.p=now.p
+    last.v=now.v
+    if(last.col_s!==last.col_e || last.row_s!==last.row_e){
+      //需要合并
+      let s = last.col_s+last.row_s+":"+last.col_e+last.row_e
+      let i = f.findIndex(v=>v.startsWith(last.col_s+last.row_s+":"))
+      if(i>-1)
+        f[i] = s
+      else
+        f.push(s)
+    }
+  };
+
   data._pf_ = function (str, buf) {
     var i, l, m, ref2, ref3, tmpStr;
     if (str === void 0 || str === null) {
@@ -205,6 +266,9 @@ async function renderExcel(exlBuf, _data_, opt) {
       tmpStr = buf[i].toString();
       if (/\s+t="s"/gm.test(tmpStr) === true) {
         buf[i] = replaceLast(tmpStr, /\s+t="s"/gm, "");
+        break;
+      }
+      if (/<c\s+/gm.test(tmpStr)) {
         break;
       }
     }
@@ -232,11 +296,59 @@ async function renderExcel(exlBuf, _data_, opt) {
         buf[i] = replaceLast(tmpStr, /\s+t="s"/gm, "");
         break;
       }
+      if (/<c\s+/gm.test(tmpStr)) {
+        break;
+      }
+    }
+    for (i = l = ref2 = buf.length - 1; ref2 <= -1 ? l < -1 : l > -1; i = ref2 <= -1 ? ++l : --l) {
+      tmpStr = buf[i].toString();
+      if (/<f>/gm.test(tmpStr) && !/<\/f>/gm.test(tmpStr)) {
+        str = str2Xml(str);
+        str = `</f><v>${ str }`;
+        buf.push = function (puhStr) {
+          var index;
+          puhStr = puhStr.toString();
+          if (puhStr.indexOf("</f>") !== -1) {
+            index = Array.prototype.push.apply(buf, [puhStr.replace(/<\/f>/m, "</v>")]);
+            buf.push = Array.prototype.push;
+          } else {
+            index = Array.prototype.push.apply(buf, [puhStr]);
+          }
+          return index;
+        };
+        return str;
+      }
+      if (/<c\s+/gm.test(tmpStr)) {
+        break;
+      }
     }
     if (str == null) {
       return "0";
     }
     if (str instanceof Date) {
+      for (i = l = ref2 = buf.length - 1; ref2 <= -1 ? l < -1 : l > -1; i = ref2 <= -1 ? ++l : --l) {
+        tmpStr = buf[i].toString();
+        if (/<c\s+/gm.test(tmpStr)) {
+          let tmp = buf.slice(i).join("");
+          if (!/\s+s="\d+"/gm.test(tmp)) {
+            const idx = createCellXfEl("14");
+            for(let j = i; j < buf.length - 1; j++) {
+              buf[j] = "";
+            }
+            buf[buf.length - 1] = tmp.replace(/<c\s+/gm, `<c s="${ idx }" `);
+          } else {
+            let idx = tmp.match(/\s+s="(\d+)"/gm)[0];
+            idx = Number(idx.replace(/\s+s="(\d+)"/gm, "$1"));
+            const numFmtId = cellXfElArr[idx].getAttribute("numFmtId");
+            if (!numFmtId || numFmtId === "0") {
+              cellXfElArr[idx].setAttribute("numFmtId", "14");
+              cellXfElArr[idx].setAttribute("applyNumberFormat", "1");
+              hasCreateCellXfEl = true;
+            }
+          }
+          break;
+        }
+      }
       return date2Num(str).toString();
     }
     str = str.toString();
@@ -275,6 +387,55 @@ async function renderExcel(exlBuf, _data_, opt) {
       sheetEntrieRels.push(entry);
     }
   }
+  
+  workbookEntry = hzip.getEntry("xl/workbook.xml");
+  workbookBuf = await inflateRawAsync(workbookEntry.cfile);
+  doc = new DOMParser().parseFromString(workbookBuf.toString(), 'text/xml');
+  documentElement = doc.documentElement;
+  var sheetsEl = documentElement.getElementsByTagName("sheets")[0]
+    , sheetElArr = sheetsEl.getElementsByTagName("sheet");
+  for (n = 0, len3 = sheetElArr.length; n < len3; n++) {
+    var sheetEl = sheetElArr[n]
+      , sheetName = sheetEl.getAttribute("name")
+      , sheetId = sheetEl.getAttribute("sheetId")
+      , sheetFileName = 'xl/worksheets/sheet' + sheetId + '.xml';
+    
+    for (let k = 0; k < sheetEntries.length; k++) {
+      const entry = sheetEntries[k];
+      if (entry.fileName === sheetFileName) {
+        entry.sheetName = sheetName;
+        break;
+      }
+    }
+  }
+  
+  const stylesEntry = hzip.getEntry("xl/styles.xml");
+  const stylesBuf = await inflateRawAsync(stylesEntry.cfile);
+  let stylesStr = stylesBuf.toString();
+  const stylesDoc = new DOMParser().parseFromString(stylesStr, 'text/xml');
+  let cellXfsEl = stylesDoc.documentElement.getElementsByTagName("cellXfs")[0];
+  let cellXfElArr = Array.from(cellXfsEl.getElementsByTagName("xf"));
+  let hasCreateCellXfEl = false;
+  function createCellXfEl(numFmtId) {
+    let idx = cellXfElArr.findIndex(function (cellXfEl) {
+      return cellXfEl.getAttribute("numFmtId") === numFmtId;
+    });
+    if (idx === -1) {
+      const cellXfEl = stylesDoc.createElement("xf");
+      cellXfEl.setAttribute("numFmtId", numFmtId);
+      cellXfEl.setAttribute("fontId", "0");
+      cellXfEl.setAttribute("fillId", "0");
+      cellXfEl.setAttribute("borderId", "0");
+      cellXfEl.setAttribute("xfId", "0");
+      cellXfEl.setAttribute("applyNumberFormat", "1");
+      cellXfsEl.appendChild(cellXfEl);
+      cellXfElArr.push(cellXfEl);
+      hasCreateCellXfEl = true;
+      idx = cellXfElArr.length - 1;
+    }
+    return idx;
+  }
+  
   sheetEntries.sort(function (arg0, arg1) {
     return arg0.fileName > arg1.fileName;
   });
@@ -715,8 +876,13 @@ async function renderExcel(exlBuf, _data_, opt) {
   }
   shsStr = await inflateRawAsync(shsEntry.cfile);
   shsObj = xml2json.toJson(shsStr);
+  const notRenderSheets = opt && opt.notRenderSheets;
   for (i = m = 0, len2 = sheetEntries.length; m < len2; i = ++m) {
     entry = sheetEntries[i];
+    if (notRenderSheets && notRenderSheets.includes(entry.sheetName)) {
+      continue;
+    }
+
     str2 = undefined
     if(!str2) {
       sheetBuf = await inflateRawAsync(entry.cfile);
@@ -1053,6 +1219,9 @@ async function renderExcel(exlBuf, _data_, opt) {
   sharedStrings2.push("</sst>");
   buffer2 = Buffer.from(sharedStrings2.join(""));
   sharedStrings2 = void 0;
+  if (hasCreateCellXfEl) {
+    await updateEntryAsync("xl/styles.xml", Buffer.from(stylesDoc.toString()));
+  }
   await updateEntryAsync.apply(hzip, ["xl/sharedStrings.xml", buffer2]);
   await updateEntryAsync.apply(hzip, ["xl/workbook.xml", workbookBuf]);
   await updateEntryAsync.apply(hzip, ["xl/_rels/workbook.xml.rels", workbookRelsBuf]);
