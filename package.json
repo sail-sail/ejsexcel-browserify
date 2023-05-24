@@ -2,11 +2,13 @@
   "author": "Sail",
   "homepage": "https://github.com/sail-sail/ejsexcel-browserify",
   "name": "ejsexcel-browserify",
-  "version": "4.1.4",
+  "version": "4.1.5",
   "main": "dist/ejsexcel.min.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "browserify ejsexcel.js -s ejsexcel -o dist/ejsexcel.min.js && terser dist/ejsexcel.min.js -o dist/ejsexcel.min.js"
+    "build": "browserify ejsexcel.js -s ejsexcel -o dist/ejsexcel.min.js && terser dist/ejsexcel.min.js -o dist/ejsexcel.min.js",
+    "bundle": "browserify ejsexcel.js -s ejsexcel -o dist/ejsexcel.bundle.js",
+    "test_server": "http-server -p 8080 -o /test"
   },
   "readme": "README.md",
   "license": "MIT",
@@ -27,6 +29,8 @@
   },
   "devDependencies": {
     "browserify": "17.0.0",
+    "file-saver": "2.0.5",
+    "http-server": "14.1.1",
     "pako": "2.1.0",
     "terser": "5.16.6"
   }

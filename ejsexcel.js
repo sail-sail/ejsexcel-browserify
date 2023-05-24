@@ -468,12 +468,13 @@ async function renderExcel(exlBuf, _data_, opt) {
     if (isString(imgPh)) {
       try {
         const res = await fetch(imgPh);
-        imgBuf = Buffer.from(res.arrayBuffer());
+        imgBuf = Buffer.from(await res.arrayBuffer());
       } catch (error) {
         err = error;
+        console.error(error);
         return "";
       }
-      imgBaseName = path.basename(imgPh);
+      imgBaseName = basename(imgPh);
     } else if (imgPh instanceof Uint8Array) {
       imgBuf = Buffer.from(imgPh);
     } else if (Buffer.isBuffer(imgPh)) {

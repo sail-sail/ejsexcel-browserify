@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test</title>
+  <meta charset="utf-8">
+  <script src="../dist/ejsexcel.bundle.js"></script>
+  <script src="/node_modules/file-saver/dist/FileSaver.js"></script>
+  <script>
+    
+    // 测试导出
+    async function testExport() {
+      const data = [[{"dpt_des":"开发部","doc_dt":"2013-09-09","doc":"a001"}],[{"pt":"pt1","des":"des1","due_dt":"2013-08-07","des2":"2013-12-07"},{"pt":"pt1","des":"des1","due_dt":"2013-09-14","des2":"des21"}]];
+      const buffer = await ejsexcel.renderExcel("./test.xlsx", data);
+      saveAsExcel(buffer, "test2.xlsx");
+    }
+    
+    // 下载Excel
+    function saveAsExcel(
+      buffer,
+      name,
+    ) {
+      const blob = new Blob([ buffer ], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, name);
+    }
+    
+  </script>
+</head>
+<body>
+<div>
+  <button onclick="testExport()">导出</button>
+</div>
+</html>
