@@ -1880,7 +1880,7 @@ async function renderExcel(exlBuf, _data_, opt) {
       buffer2 = buffer2.toString()
         .replace("<hyperlinks></hyperlinks>", "")
         .replace("<mergeCells></mergeCells>", "")
-        .replace("<dataValidations></dataValidations>", "");
+        .replace(`<dataValidations count="0"></dataValidations>`, "");
       await updateEntryAsync(entry.fileName, buffer2);
     }
   }
