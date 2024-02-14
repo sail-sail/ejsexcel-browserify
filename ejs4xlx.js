@@ -462,6 +462,13 @@ exports.parse = function parse(str, options){
     	  js = js.substring(0,js.length-1);
     	  js += ",buf)";
       }
+			// 设置当前工作表的名称
+			else if(0 === js.indexOf('_setSheetName_(')) {
+				if(options && options.fileName) {
+				  js = js.substring(0,js.length-1) + ",";
+				  js += "\""+options.fileName.replace(/\"/gm,"\\\"")+"\")";
+				}
+			}
       //隐藏当前工作表 2017-01-18
       else if(0 == js.indexOf('_hideSheet_(')) {
     	  if(options && options.fileName) {

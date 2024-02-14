@@ -88,7 +88,7 @@ function Promise_fromStandard(cb, t) {
 
 const inflateRawAsync = Promise_fromStandard(zlib.inflateRaw, zlib);
 
-const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><%var _data_ = _args._data_;var _charPlus_ = _args._charPlus_;var autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;var _charToNum_ = _args._charToNum_;var _str2Xml_ = _args._str2Xml_;var _hideSheet_ = _args._hideSheet_;var _showSheet_ = _args._showSheet_;var _deleteSheet_ = _args._deleteSheet_;var _ps_ = _args._ps_;var _pi_ = _args._pi_;var _pf_ = _args._pf_;var _acVar_ = _args._acVar_;var _r = 0;var _c = 0;var _row = 0;var _col = \"\";var _rc = \"\";const _lastRow = 1048576;var _img_ = _args._img_;var _qrcode_ = _args._qrcode_;var _mergeCellArr_ = [];var _mergeCellFn_ = function(mclStr) {  _mergeCellArr_.push(mclStr);};var _dataValidationArr_=[];var _dataValidation_ = function(o) {if (!o || !o.sqref) return;o.type = o.type || 'list';o.allowBlank = o.allowBlank || '1';o.showInputMessage = o.showInputMessage || '1';o.showErrorMessage = o.showErrorMessage || '1';o.formula1 = o.formula1 || '';o.formula1 = {$t:o.formula1};_dataValidationArr_.push(o);};var _hyperlinkArr_ = [];var _outlineLevel_ = _args._outlineLevel_;%>";
+const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><%var _data_ = _args._data_;var _charPlus_ = _args._charPlus_;var autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;var _charToNum_ = _args._charToNum_;var _str2Xml_ = _args._str2Xml_;var _setSheetName_ = _args._setSheetName_;var _hideSheet_ = _args._hideSheet_;var _showSheet_ = _args._showSheet_;var _deleteSheet_ = _args._deleteSheet_;var _ps_ = _args._ps_;var _pi_ = _args._pi_;var _pf_ = _args._pf_;var _acVar_ = _args._acVar_;var _r = 0;var _c = 0;var _row = 0;var _col = \"\";var _rc = \"\";const _lastRow = 1048576;var _img_ = _args._img_;var _qrcode_ = _args._qrcode_;var _mergeCellArr_ = [];var _mergeCellFn_ = function(mclStr) {  _mergeCellArr_.push(mclStr);};var _dataValidationArr_=[];var _dataValidation_ = function(o) {if (!o || !o.sqref) return;o.type = o.type || 'list';o.allowBlank = o.allowBlank || '1';o.showInputMessage = o.showInputMessage || '1';o.showErrorMessage = o.showErrorMessage || '1';o.formula1 = o.formula1 || '';o.formula1 = {$t:o.formula1};_dataValidationArr_.push(o);};var _hyperlinkArr_ = [];var _outlineLevel_ = _args._outlineLevel_;var _cols_ = _args._cols_;%>";
 
 const sharedStrings2Prx = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"1\" uniqueCount=\"1\">";
 
@@ -99,6 +99,8 @@ const xjOp = {
   trim: false,
   sanitize: false
 };
+
+const col_replace_uuid = "G758U9rLT2aDFL3CiZx4vw";
 
 function renderExcelCb(exlBuf, _data_, opt, callback) {
 if(typeof(opt) === "function") {
@@ -368,6 +370,76 @@ async function renderExcel(exlBuf, _data_, opt) {
         break;
       }
     }
+  };
+  
+  const colsStrArr = [ ];
+  /*
+  在 Excel OpenXML 中，`<col>` 标签用于定义列的属性。以下是一些可用的属性：
+  - `min`：这是列的最小索引
+  - `max`：这是列的最大索引
+  - `width`：这是列的宽度
+  - `customWidth`：这是一个布尔值，表示是否使用自定义的列宽
+  - `style`：列的样式索引。
+  - `hidden`：一个布尔值，表示列是否被隐藏。
+  - `bestFit`：一个布尔值，表示列宽度是否自动调整以适应其内容。
+  - `collapsed`：一个布尔值，表示在分组时列是否被折叠。
+  - `outlineLevel`：列的大纲级别。这用于分组和大纲视图。
+  - `phonetic`：一个布尔值，表示是否显示拼音。
+  */
+  data._cols_ = function (obj) {
+    if (!obj) {
+      return;
+    }
+    if (typeof obj.min === "string") {
+      obj.min = charToNum(obj.min);
+    }
+    if (typeof obj.max === "string") {
+      obj.max = charToNum(obj.max);
+    }
+    const min = Number(obj.min);
+    if (isNaN(min) || min < 1 || min > 16384) {
+      return;
+    }
+    let max = undefined;
+    if (obj.max == null) {
+      max = min;
+    } else {
+      max = Number(obj.max);
+    }
+    if (isNaN(max) || max < 1 || max > 16384) {
+      return;
+    }
+    let width = Number(obj.width || 0);
+    if (isNaN(width) || width < 0) {
+      return;
+    }
+    width = (width / 12).toFixed(8);
+    const customWidth = obj.customWidth || 1;
+    let str = "<col";
+    str += ` min="${ min }"`;
+    str += ` max="${ max }"`;
+    str += ` width="${ width }"`;
+    str += ` customWidth="${ customWidth }"`;
+    if (obj.style) {
+      str += ` style="${ obj.style }"`;
+    }
+    if (obj.hidden) {
+      str += ` hidden="${ obj.hidden }"`;
+    }
+    if (obj.bestFit) {
+      str += ` bestFit="${ obj.bestFit }"`;
+    }
+    if (obj.collapsed) {
+      str += ` collapsed="${ obj.collapsed }"`;
+    }
+    if (obj.outlineLevel) {
+      str += ` outlineLevel="${ obj.outlineLevel }"`;
+    }
+    if (obj.phonetic) {
+      str += ` phonetic="${ obj.phonetic }"`;
+    }
+    str += "></col>";
+    colsStrArr.push(str);
   };
   data._acVar_ = {
     sharedStrings: [],
@@ -749,6 +821,37 @@ async function renderExcel(exlBuf, _data_, opt) {
   workbookBuf = await inflateRawAsync(workbookEntry.cfile);
   workbookRelsEntry = hzip.getEntry("xl/_rels/workbook.xml.rels");
   workbookRelsBuf = await inflateRawAsync(workbookRelsEntry.cfile);
+  data._setSheetName_ = function (sheetName, fileName) {
+    if (!workbookEntry || !workbookRelsEntry || !fileName || sheetName == null) {
+      return;
+    }
+    let rId = void 0;
+    let doc = new DOMParser().parseFromString(workbookRelsBuf.toString(), 'text/xml');
+    let documentElement = doc.documentElement;
+    const relationshipElArr = documentElement.getElementsByTagName("Relationship");
+    for (let m = 0, len2 = relationshipElArr.length; m < len2; m++) {
+      const relationshipEl = relationshipElArr[m];
+      if ("xl/" + relationshipEl.getAttribute("Target") === fileName) {
+        rId = relationshipEl.getAttribute("Id");
+        break;
+      }
+    }
+    if (rId) {
+      doc = new DOMParser().parseFromString(workbookBuf.toString(), 'text/xml');
+      documentElement = doc.documentElement;
+      sheetsEl = documentElement.getElementsByTagName("sheets")[0];
+      const sheetElArr = sheetsEl.getElementsByTagName("sheet");
+      const len3 = sheetElArr.length;
+      for (let n = 0; n < len3; n++) {
+        const sheetEl = sheetElArr[n];
+        if (sheetEl.getAttribute("r:id") === rId) {
+          sheetEl.setAttribute("name", sheetName);
+          break;
+        }
+      }
+      workbookBuf = Buffer.from(doc.toString());
+    }
+  };
   data._hideSheet_ = function (fileName) {
     var doc, documentElement, len2, len3, m, n, rId, relationshipEl, relationshipElArr, sheetEl, sheetElArr, sheetsEl;
     if (!workbookEntry || !workbookRelsEntry || !fileName) {
@@ -925,6 +1028,33 @@ async function renderExcel(exlBuf, _data_, opt) {
           documentElement.insertBefore(dataValidationsDomEl, sheetDataDomEl.nextSibling);
         }
       }
+      
+      // <G758U9rLT2aDFL3CiZx4vw></G758U9rLT2aDFL3CiZx4vw>
+      let colsDomEl = documentElement.getElementsByTagName("cols")[0];
+      if (!colsDomEl) {
+        colsDomEl = doc.createElement("cols");
+        const sheetDataDomEl = documentElement.getElementsByTagName("sheetData")[0];
+        documentElement.insertBefore(colsDomEl, sheetDataDomEl);
+        const colDomEl = doc.createElement("col");
+        colDomEl.setAttribute("min", "1");
+        colDomEl.setAttribute("max", "1");
+        colDomEl.setAttribute("width", "0");
+        colDomEl.setAttribute("customWidth", "1");
+        colsDomEl.appendChild(colDomEl);
+      } else {
+        const colDomElArr = colsDomEl.getElementsByTagName("col");
+        if (colDomElArr.length === 0) {
+          const colDomEl = doc.createElement("col");
+          colDomEl.setAttribute("min", "1");
+          colDomEl.setAttribute("max", "1");
+          colDomEl.setAttribute("width", "0");
+          colDomEl.setAttribute("customWidth", "1");
+          colsDomEl.appendChild(colDomEl);
+        }
+      }
+      const col_replace = doc.createElement(col_replace_uuid);
+      colsDomEl.appendChild(col_replace);
+      
       rowElArr = sheetDataDomEl.getElementsByTagName("row");
       for (n = 0, len3 = rowElArr.length; n < len3; n++) {
         rowEl = rowElArr[n];
@@ -1288,7 +1418,11 @@ async function renderExcel(exlBuf, _data_, opt) {
       buffer2 = buffer2.toString()
         .replace("<hyperlinks></hyperlinks>", "")
         .replace("<mergeCells></mergeCells>", "")
-        .replace(`<dataValidations count="0"></dataValidations>`, "");
+        .replace(`<dataValidations count="0"></dataValidations>`, "")
+        .replace(
+          `<${ col_replace_uuid }></${ col_replace_uuid }>`,
+          colsStrArr.join(""),
+        );
       await updateEntryAsync(entry.fileName, buffer2);
     }
   }
