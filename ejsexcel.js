@@ -27,18 +27,15 @@ const isArray = Array.isArray || isType("Array");
 
 const isFunction = isType("Function");
 
-function replaceLast(tt, what, replacement) {
-  var mthArr, num;
-  mthArr = tt.match(what);
-  num = 0;
-  return tt.replace(what, function (s) {
-    num++;
-    if (num === mthArr.length) {
-      return replacement;
-    }
-    return s;
-  });
-};
+function replaceLast(source, regex, replacement) {
+  const matches = source.match(regex);
+  if (matches) {
+    const lastMatch = matches[matches.length - 1];
+    const lastIndex = source.lastIndexOf(lastMatch);
+    return source.substring(0, lastIndex) + source.substring(lastIndex).replace(regex, replacement);
+  }
+  return source;
+}
 
 const DOMParser = xmldom.DOMParser;
 
@@ -88,7 +85,7 @@ function Promise_fromStandard(cb, t) {
 
 const inflateRawAsync = Promise_fromStandard(zlib.inflateRaw, zlib);
 
-const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><%var _data_ = _args._data_;var _charPlus_ = _args._charPlus_;var autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;var _charToNum_ = _args._charToNum_;var _str2Xml_ = _args._str2Xml_;var _setSheetName_ = _args._setSheetName_;var _hideSheet_ = _args._hideSheet_;var _showSheet_ = _args._showSheet_;var _deleteSheet_ = _args._deleteSheet_;var _ps_ = _args._ps_;var _pi_ = _args._pi_;var _pf_ = _args._pf_;var _acVar_ = _args._acVar_;var _r = 0;var _c = 0;var _row = 0;var _col = \"\";var _rc = \"\";const _lastRow = 1048576;var _img_ = _args._img_;var _qrcode_ = _args._qrcode_;var _mergeCellArr_ = [];var _mergeCellFn_ = function(mclStr) {  _mergeCellArr_.push(mclStr);};var _dataValidationArr_=[];var _dataValidation_ = function(o) {if (!o || !o.sqref) return;o.type = o.type || 'list';o.allowBlank = o.allowBlank || '1';o.showInputMessage = o.showInputMessage || '1';o.showErrorMessage = o.showErrorMessage || '1';o.formula1 = o.formula1 || '';o.formula1 = {$t:o.formula1};_dataValidationArr_.push(o);};var _hyperlinkArr_ = [];var _outlineLevel_ = _args._outlineLevel_;var _cols_ = _args._cols_;%>";
+const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><%var _data_ = _args._data_;var _charPlus_ = _args._charPlus_;var autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;var _charToNum_ = _args._charToNum_;var _str2Xml_ = _args._str2Xml_;var _setSheetName_ = _args._setSheetName_;var _hideSheet_ = _args._hideSheet_;var _showSheet_ = _args._showSheet_;var _deleteSheet_ = _args._deleteSheet_;var _ps_ = _args._ps_;var _pi_ = _args._pi_;var _pf_ = _args._pf_;var _acVar_ = _args._acVar_;var _r = 0;var _c = 0;var _row = 0;var _col = \"\";var _rc = \"\";const _lastRow = 1048576;var _img_ = _args._img_;var _qrcode_ = _args._qrcode_;var _mergeCellArr_ = [];var _mergeCellFn_ = function(mclStr) {  _mergeCellArr_.push(mclStr);};var _dataValidationArr_=[];var _dataValidation_ = function(o) {if (!o || !o.sqref) return;o.type = o.type || 'list';o.allowBlank = o.allowBlank || '1';o.showInputMessage = o.showInputMessage || '1';o.showErrorMessage = o.showErrorMessage || '1';o.formula1 = o.formula1 || '';o.formula1 = {$t:o.formula1};_dataValidationArr_.push(o);};var _hyperlinkArr_ = [];var _setC_ = _args._setC_;var _rowSortCell_ = _args._rowSortCell_;var _outlineLevel_ = _args._outlineLevel_;var _cols_ = _args._cols_;var _freezePane_ = _args._freezePane_;%>";
 
 const sharedStrings2Prx = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"1\" uniqueCount=\"1\">";
 
@@ -101,6 +98,8 @@ const xjOp = {
 };
 
 const col_replace_uuid = "G758U9rLT2aDFL3CiZx4vw";
+const ROW_REG = /<row[^>]*>.*?<\/row>/gm;
+const SHEET_VIEWS_REG = /<sheetViews[^>]*>.*?<\/sheetViews>/gm;
 
 function renderExcelCb(exlBuf, _data_, opt, callback) {
 if(typeof(opt) === "function") {
@@ -337,7 +336,8 @@ async function renderExcel(exlBuf, _data_, opt) {
             for(let j = i; j < buf.length - 1; j++) {
               buf[j] = "";
             }
-            buf[buf.length - 1] = tmp.replace(/<c\s+/gm, `<c s="${ idx }" `);
+            const rStr = tmp.match(/ r="[A-Z]+[0-9]+"/gm)[0];
+            buf[buf.length - 1] = tmp.replace(/ r="[A-Z]+[0-9]+"/gm, `${ rStr } s="${ idx }"`);
           } else {
             let idx = tmp.match(/\s+s="(\d+)"/gm)[0];
             idx = Number(idx.replace(/\s+s="(\d+)"/gm, "$1"));
@@ -371,6 +371,132 @@ async function renderExcel(exlBuf, _data_, opt) {
       }
     }
   };
+  data._setC_ = function (str, buf) {
+    if (!str) {
+      return;
+    }
+    let tmpStr = "";
+    for (let i = buf.length - 1; i >= 0; i--) {
+      tmpStr = buf[i] + tmpStr;
+      if (/<c r="[A-Z]+[0-9]+"/gm.test(tmpStr)) {
+        const iter = tmpStr.matchAll(/<c r="[A-Z]+([0-9]+)"/gm).next();
+        const rowNum = iter.value[1];
+        buf[i] = replaceLast(tmpStr, /<c r="[A-Z]+[0-9]+"/gm, "<c r=\""+str+rowNum+"\"");
+        buf.length = i + 1;
+        break;
+      }
+    }
+  };
+  data._rowSortCell_ = function(buf) {
+    let tmpStr = "";
+    for (let i = buf.length - 1; i >= 0; i--) {
+      tmpStr = buf[i] + tmpStr;
+      const matches = tmpStr.match(ROW_REG);
+      if (!matches || matches.length === 0) {
+        continue;
+      }
+      let rowStr = matches[matches.length - 1];
+      if (!rowStr) {
+        continue;
+      }
+      const doc = new DOMParser().parseFromString(rowStr, "text/xml");
+      const documentElement = doc.documentElement;
+      const cellEls = Array.from(documentElement.getElementsByTagName("c"));
+      cellEls.sort(function(cellEl0, cellEl1) {
+        const r0 = cellEl0.getAttribute("r");
+        const r1 = cellEl1.getAttribute("r");
+        if (r0.length < r1.length) {
+          return -1;
+        }
+        if (r0.length > r1.length) {
+          return 1;
+        }
+        if (r0 < r1) {
+          return -1;
+        }
+        if (r0 > r1) {
+          return 1;
+        }
+        return 0;
+      });
+      for (let j = 0; j < cellEls.length; j++) {
+        documentElement.appendChild(cellEls[j]);
+      }
+      rowStr = documentElement.toString();
+      buf[i] = replaceLast(tmpStr, ROW_REG, rowStr);
+      buf.length = i + 1;
+      break;
+    }
+  };
+  data._freezePane_ = function(obj, buf) {
+    const xSplit = obj.xSplit;
+    const ySplit = obj.ySplit;
+    const topLeftCell = obj.topLeftCell;
+    const activePane = obj.activePane;
+    const state = obj.state;
+    let tmpStr = "";
+    for (let i = 0; i < buf.length; i++) {
+      if (i > 1000) {
+        return;
+      }
+      tmpStr += buf.shift();
+      const matches = tmpStr.match(SHEET_VIEWS_REG);
+      if (!matches || matches.length === 0) {
+        continue;
+      }
+      let sheetviewsStr = matches[matches.length - 1];
+      if (!sheetviewsStr) {
+        continue;
+      }
+      const doc = new DOMParser().parseFromString(sheetviewsStr, "text/xml");
+      const documentElement = doc.documentElement;
+      let sheetViewEl = documentElement.getElementsByTagName("sheetView")[0];
+      if (!sheetViewEl) {
+        sheetViewEl = doc.createElement("sheetView");
+        documentElement.appendChild(sheetViewEl);
+      }
+      let paneEl = sheetViewEl.getElementsByTagName("pane")[0];
+      if (!paneEl) {
+        if (xSplit != null && ySplit != null) {
+          paneEl = doc.createElement("pane");
+          if (xSplit != null) {
+            paneEl.setAttribute("xSplit", xSplit);
+          }
+          if (ySplit != null) {
+            paneEl.setAttribute("ySplit", ySplit);
+          }
+          paneEl.setAttribute("topLeftCell", topLeftCell || "B2");
+          paneEl.setAttribute("activePane", activePane || "bottomRight");
+          paneEl.setAttribute("state", state || "frozen");
+          const selectionEl = sheetViewEl.getElementsByTagName("selection")[0];
+          if (selectionEl) {
+            sheetViewEl.insertBefore(paneEl, selectionEl);
+          } else {
+            sheetViewEl.appendChild(paneEl);
+          }
+        }
+      } else {
+        if (xSplit != null) {
+          paneEl.setAttribute("xSplit", xSplit);
+        }
+        if (ySplit != null) {
+          paneEl.setAttribute("ySplit", ySplit);
+        }
+        if (topLeftCell) {
+          paneEl.setAttribute("topLeftCell", topLeftCell);
+        }
+        if (activePane) {
+          paneEl.setAttribute("activePane", activePane);
+        }
+        if (state) {
+          paneEl.setAttribute("state", state);
+        }
+      }
+      sheetviewsStr = documentElement.toString();
+      buf.unshift(replaceLast(tmpStr, SHEET_VIEWS_REG, sheetviewsStr));
+      break;
+    }
+  };
   
   const colsStrArr = [ ];
   /*
@@ -386,7 +512,7 @@ async function renderExcel(exlBuf, _data_, opt) {
   - `outlineLevel`：列的大纲级别。这用于分组和大纲视图。
   - `phonetic`：一个布尔值，表示是否显示拼音。
   */
-  data._cols_ = function (obj) {
+  data._cols_ = function(obj) {
     if (!obj) {
       return;
     }
@@ -409,9 +535,9 @@ async function renderExcel(exlBuf, _data_, opt) {
     if (isNaN(max) || max < 1 || max > 16384) {
       return;
     }
-    let width = Number(obj.width || 0);
-    if (isNaN(width) || width < 0) {
-      return;
+    let width = Number(obj.width);
+    if (isNaN(width) || width <= 0) {
+      width = 15.58203125 * 12;
     }
     width = (width / 12).toFixed(8);
     const customWidth = obj.customWidth || 1;
@@ -423,9 +549,7 @@ async function renderExcel(exlBuf, _data_, opt) {
     if (obj.style) {
       str += ` style="${ obj.style }"`;
     }
-    if (obj.hidden) {
-      str += ` hidden="${ obj.hidden }"`;
-    }
+    str += ` hidden="${ (obj.hidden || "0") }"`;
     if (obj.bestFit) {
       str += ` bestFit="${ obj.bestFit }"`;
     }
@@ -1038,7 +1162,8 @@ async function renderExcel(exlBuf, _data_, opt) {
         const colDomEl = doc.createElement("col");
         colDomEl.setAttribute("min", "1");
         colDomEl.setAttribute("max", "1");
-        colDomEl.setAttribute("width", "0");
+        colDomEl.setAttribute("width", "15.58203125");
+        colDomEl.setAttribute("hidden", "0");
         colDomEl.setAttribute("customWidth", "1");
         colsDomEl.appendChild(colDomEl);
       } else {
@@ -1047,7 +1172,8 @@ async function renderExcel(exlBuf, _data_, opt) {
           const colDomEl = doc.createElement("col");
           colDomEl.setAttribute("min", "1");
           colDomEl.setAttribute("max", "1");
-          colDomEl.setAttribute("width", "0");
+          colDomEl.setAttribute("width", "15.58203125");
+          colDomEl.setAttribute("hidden", "0");
           colDomEl.setAttribute("customWidth", "1");
           colsDomEl.appendChild(colDomEl);
         }

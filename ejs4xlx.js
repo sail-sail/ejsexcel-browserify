@@ -134,6 +134,7 @@ exports.parse = function parse(str, options){
   var ifCBegin = false;
   var ifCEnd = false;
   var pixEq = "";
+	var rowMustSortCell = false;
   for (var i = 0, len = str.length; i < len; ++i) {
     if (str.slice(i, open.length + i) == open) {
       i += open.length;
@@ -276,6 +277,11 @@ exports.parse = function parse(str, options){
     	  buf = [strTmp];
     	  js = '';
       }
+      else if(0 == js.indexOf('initJs:')) {
+				var jsStr = js.slice(7);
+				buf.splice(1,0,"');"+jsStr+";buf.push('");
+			  js = '';
+			}
       else if(0 == js.indexOf('forCBegin')) {
     	  forCBegin = true;
     	  forCEnd = false;
@@ -452,6 +458,17 @@ exports.parse = function parse(str, options){
     		  js = "await "+js+",\""+options.fileName.replace(/\"/gm,"\\\"")+"\",("+rowRn+"+_r),("+cellNum+"+_c))";
     	  }
       }
+			// 设置单元格的顺序
+			else if(0 === js.indexOf('_setC_(')) {
+				js = js.substring(0,js.length-1);
+				js += ",buf)";
+				rowMustSortCell = true;
+			}
+			// 冻结窗格
+			else if(0 === js.indexOf('_freezePane_(')) {
+				js = js.substring(0,js.length-1);
+				js += ",buf)";
+			}
       //分组
       else if(0 === js.indexOf('_outlineLevel_(')) {
     	  js = js.substring(0,js.length-1);
@@ -561,8 +578,19 @@ exports.parse = function parse(str, options){
     	isForRowEnd = true;
     	isForRowBegin = false;
     	i += 5;
-    	buf.push("</row>');_r++;}_r--;buf.push('");
+    	buf.push("</row>');");
+			if (rowMustSortCell === true) {
+				rowMustSortCell = false;
+				buf.push("_rowSortCell_(buf);");
+			}
+			buf.push("_r++;}_r--;");
+			buf.push("buf.push('");
     }
+		else if (rowMustSortCell === true && str.substring(i, 6+i) === "</row>") {
+			rowMustSortCell = false;
+			buf.push("</row>');_rowSortCell_(buf);buf.push('");
+			i += 5;
+		}
     else if(isForCellBegin === true && isForCellEnd === false && str.substring(i,4+i) === "</c>") {
     	isForCellEnd = true;
     	isForCellBegin = false;
