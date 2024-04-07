@@ -703,13 +703,19 @@ async function renderExcel(exlBuf, _data_, opt) {
     if (isString(imgPh)) {
       try {
         const res = await fetch(imgPh);
+        const contentDisposition = res.headers.get("Content-Disposition");
+        if (contentDisposition) {
+          const matches = contentDisposition.match(/filename="?(.+)?"?/);
+          if (matches) {
+            imgBaseName = decodeURIComponent(matches[1]);
+          }
+        }
         imgBuf = Buffer.from(await res.arrayBuffer());
       } catch (error) {
         err = error;
         console.error(error);
         return "";
       }
-      imgBaseName = basename(imgPh);
     } else if (imgPh instanceof Uint8Array) {
       imgBuf = Buffer.from(imgPh);
     } else if (Buffer.isBuffer(imgPh)) {
