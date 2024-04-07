@@ -465,6 +465,11 @@ exports.parse = function parse(str, options){
 				js += ",buf)";
 				rowMustSortCell = true;
 			}
+			// 设置行高
+			else if(0 === js.indexOf('_setHt_(')) {
+				js = js.substring(0,js.length-1);
+				js += ",buf)";
+			}
 			// 冻结窗格
 			else if(0 === js.indexOf('_freezePane_(')) {
 				js = js.substring(0,js.length-1);
@@ -712,7 +717,7 @@ function Promise_fromStandard(cb, t) {
 
 const inflateRawAsync = Promise_fromStandard(zlib.inflateRaw, zlib);
 
-const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><%var _data_ = _args._data_;var _charPlus_ = _args._charPlus_;var autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;var _charToNum_ = _args._charToNum_;var _str2Xml_ = _args._str2Xml_;var _setSheetName_ = _args._setSheetName_;var _hideSheet_ = _args._hideSheet_;var _showSheet_ = _args._showSheet_;var _deleteSheet_ = _args._deleteSheet_;var _ps_ = _args._ps_;var _pi_ = _args._pi_;var _pf_ = _args._pf_;var _acVar_ = _args._acVar_;var _r = 0;var _c = 0;var _row = 0;var _col = \"\";var _rc = \"\";const _lastRow = 1048576;var _img_ = _args._img_;var _qrcode_ = _args._qrcode_;var _mergeCellArr_ = [];var _mergeCellFn_ = function(mclStr) {  _mergeCellArr_.push(mclStr);};var _dataValidationArr_=[];var _dataValidation_ = function(o) {if (!o || !o.sqref) return;o.type = o.type || 'list';o.allowBlank = o.allowBlank || '1';o.showInputMessage = o.showInputMessage || '1';o.showErrorMessage = o.showErrorMessage || '1';o.formula1 = o.formula1 || '';o.formula1 = {$t:o.formula1};_dataValidationArr_.push(o);};var _hyperlinkArr_ = [];var _setC_ = _args._setC_;var _rowSortCell_ = _args._rowSortCell_;var _outlineLevel_ = _args._outlineLevel_;var _cols_ = _args._cols_;var _freezePane_ = _args._freezePane_;%>";
+const sheetSufStr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><%var _data_ = _args._data_;var _charPlus_ = _args._charPlus_;var autoMergeCellArr = {}, _autoMergeCell_ = _args._autoMergeCell_;var _charToNum_ = _args._charToNum_;var _str2Xml_ = _args._str2Xml_;var _setSheetName_ = _args._setSheetName_;var _hideSheet_ = _args._hideSheet_;var _showSheet_ = _args._showSheet_;var _deleteSheet_ = _args._deleteSheet_;var _ps_ = _args._ps_;var _pi_ = _args._pi_;var _pf_ = _args._pf_;var _acVar_ = _args._acVar_;var _r = 0;var _c = 0;var _row = 0;var _col = \"\";var _rc = \"\";const _lastRow = 1048576;var _img_ = _args._img_;var _qrcode_ = _args._qrcode_;var _mergeCellArr_ = [];var _mergeCellFn_ = function(mclStr) {  _mergeCellArr_.push(mclStr);};var _dataValidationArr_=[];var _dataValidation_ = function(o) {if (!o || !o.sqref) return;o.type = o.type || 'list';o.allowBlank = o.allowBlank || '1';o.showInputMessage = o.showInputMessage || '1';o.showErrorMessage = o.showErrorMessage || '1';o.formula1 = o.formula1 || '';o.formula1 = {$t:o.formula1};_dataValidationArr_.push(o);};var _hyperlinkArr_ = [];var _setC_ = _args._setC_;var _setHt_ = _args._setHt_;var _rowSortCell_ = _args._rowSortCell_;var _outlineLevel_ = _args._outlineLevel_;var _cols_ = _args._cols_;var _freezePane_ = _args._freezePane_;%>";
 
 const sharedStrings2Prx = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"1\" uniqueCount=\"1\">";
 
@@ -998,6 +1003,8 @@ async function renderExcel(exlBuf, _data_, opt) {
       }
     }
   };
+  const setCReg1 = /<c r="[A-Z]+[0-9]+"/gm;
+  const setCReg2 = /<c r="[A-Z]+([0-9]+)"/gm;
   data._setC_ = function (str, buf) {
     if (!str) {
       return;
@@ -1005,13 +1012,49 @@ async function renderExcel(exlBuf, _data_, opt) {
     let tmpStr = "";
     for (let i = buf.length - 1; i >= 0; i--) {
       tmpStr = buf[i] + tmpStr;
-      if (/<c r="[A-Z]+[0-9]+"/gm.test(tmpStr)) {
-        const iter = tmpStr.matchAll(/<c r="[A-Z]+([0-9]+)"/gm).next();
+      if (setCReg1.test(tmpStr)) {
+        const iter = tmpStr.matchAll(setCReg2).next();
         const rowNum = iter.value[1];
-        buf[i] = replaceLast(tmpStr, /<c r="[A-Z]+[0-9]+"/gm, "<c r=\""+str+rowNum+"\"");
+        buf[i] = replaceLast(tmpStr, setCReg1, "<c r=\""+str+rowNum+"\"");
         buf.length = i + 1;
         break;
       }
+    }
+  };
+  const setHtReg1 = /<row r="[0-9]+"/gm;
+  const setHtReg2 = /(<row r="[0-9]+".*? ht=")[0-9\.]+(" )/gm;
+  const setHtReg3 = /(<row r="[0-9]+".*? customHeight=")[0-1]+(" )/gm;
+  const setHtReg4 = /(<row r="[0-9]+".*?)(>)/gm;
+  data._setHt_ = function (height, buf) {
+    height = Number(height);
+    if (isNaN(height) || height <= 0) {
+      return;
+    }
+    const heightStr = (height * 0.5).toFixed(2);
+    let tmpStr = "";
+    for (let i = buf.length - 1; i >= 0; i--) {
+      tmpStr = buf[i] + tmpStr;
+      let hasRow = false;
+      if (setHtReg2.test(tmpStr)) {
+        buf[i] = replaceLast(tmpStr, setHtReg1, "$1"+heightStr+"$2");
+        tmpStr = buf[i];
+        buf.length = i + 1;
+        hasRow = true;
+      } else if (setHtReg1.test(tmpStr)) {
+        buf[i] = replaceLast(tmpStr, setHtReg1, "$& ht=\""+heightStr+"\"");
+        tmpStr = buf[i];
+        buf.length = i + 1;
+        hasRow = true;
+      }
+      if (!hasRow) {
+        continue;
+      }
+      if (setHtReg3.test(tmpStr)) {
+        buf[i] = replaceLast(tmpStr, setHtReg3, "$11$2");
+      } else {
+        buf[i] = replaceLast(tmpStr, setHtReg4, "$1 customHeight=\"1\"$2");
+      }
+      break;
     }
   };
   data._rowSortCell_ = function(buf) {
@@ -1164,14 +1207,15 @@ async function renderExcel(exlBuf, _data_, opt) {
     }
     let width = Number(obj.width);
     if (isNaN(width) || width <= 0) {
-      width = 15.58203125 * 12;
+      width = 15.58203125;
+    } else {
+      width = width * 0.0833;
     }
-    width = (width / 12).toFixed(8);
     const customWidth = obj.customWidth || 1;
     let str = "<col";
     str += ` min="${ min }"`;
     str += ` max="${ max }"`;
-    str += ` width="${ width }"`;
+    str += ` width="${ width.toFixed(8) }"`;
     str += ` customWidth="${ customWidth }"`;
     if (obj.style) {
       str += ` style="${ obj.style }"`;
@@ -2254,7 +2298,7 @@ function charToNum(str) {
 
 function date2Num(date) {
   var time = date.getTime();
-  var valTmp = time + 25567.33 * 86400000;
+  var valTmp = time + 25569 * 86400000;
   if(valTmp <= 60 * 86400000) {
     valTmp += 86400000;
   } else {

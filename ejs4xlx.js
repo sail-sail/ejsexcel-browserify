@@ -464,6 +464,11 @@ exports.parse = function parse(str, options){
 				js += ",buf)";
 				rowMustSortCell = true;
 			}
+			// 设置行高
+			else if(0 === js.indexOf('_setHt_(')) {
+				js = js.substring(0,js.length-1);
+				js += ",buf)";
+			}
 			// 冻结窗格
 			else if(0 === js.indexOf('_freezePane_(')) {
 				js = js.substring(0,js.length-1);
