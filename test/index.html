@@ -1,34 +1,123 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Test</title>
-  <meta charset="utf-8">
-  <script src="../dist/ejsexcel.bundle.js"></script>
-  <script src="/node_modules/file-saver/dist/FileSaver.js"></script>
-  <script>
-    
-    // 测试导出
-    async function testExport() {
-      const data = [[{"dpt_des":"开发部","doc_dt":"2013-09-09","doc":"a001"}],[{"pt":"pt1","des":"des1","due_dt":"2013-08-07","des2":"2013-12-07"},{"pt":"pt1","des":"des1","due_dt":"2013-09-14","des2":"des21"}]];
-      const buffer = await ejsexcel.renderExcel("./test.xlsx", data);
-      saveAsExcel(buffer, "test2.xlsx");
-    }
-    
-    // 下载Excel
-    function saveAsExcel(
-      buffer,
-      name,
-    ) {
-      const blob = new Blob([ buffer ], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      saveAs(blob, name);
-    }
-    
-  </script>
-</head>
-<body>
-<div>
-  <button onclick="testExport()">导出</button>
-</div>
+    <head>
+        <title>Test</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" data-name="vs/editor/editor.main"
+            href="../node_modules/monaco-editor/min/vs/editor/editor.main.css" />
+        <script src="../dist/ejsexcel.bundle.js"></script>
+        <script src="/node_modules/file-saver/dist/FileSaver.js"></script>
+        <script src="../node_modules/@js-preview/excel/lib/index.umd.js"></script>
+        <link rel="stylesheet" href="../node_modules/@js-preview/excel/lib/index.css">
+        </link>
+        <style>
+            #container {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+                justify-content: space-between;
+
+            }
+
+            #container>div {
+                flex: 1;
+                height: 600px;
+            }
+        </style>
+        <script>
+
+
+            var templateBuffer, editor;
+
+            function getData() {
+                const value = editor.getValue();
+                let data;
+                try {
+                    data = JSON.parse(value)
+                } catch (error) {
+                    alert('数据格式错误')
+                }
+                return data;
+            }
+
+            async function testPreview() {
+                const data = getData()
+                const buffer = await ejsexcel.renderExcel(templateBuffer, data);
+
+                const blob = new Blob([buffer], {
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                });
+
+                const myExcelPreviewer = jsPreviewExcel.init(document.getElementById('preview'));
+                myExcelPreviewer.preview(blob).then(res => {
+                    alert('预览完成');
+                }).catch(e => {
+                    alert('预览失败', e);
+                })
+            }
+
+            // 测试导出
+            async function testExport() {
+                const data = getData()
+                const buffer = await ejsexcel.renderExcel(templateBuffer, data);
+                saveAsExcel(buffer, "test2.xlsx");
+            }
+
+            // 下载Excel
+            function saveAsExcel(
+                buffer,
+                name,
+            ) {
+                const blob = new Blob([buffer], {
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                });
+                saveAs(blob, name);
+            }
+            function handleFile(files) {
+                var file = files[0];
+                var reader = new FileReader();
+
+                reader.onload = function (event) {
+                    templateBuffer = event.target.result;
+                    // 在这里使用 buffer，例如发送给服务器等等
+                    console.log(templateBuffer);
+                };
+
+                reader.onerror = function (event) {
+                    console.error("文件读取出错", event.target.error);
+                };
+
+                reader.readAsArrayBuffer(file);
+            }
+        </script>
+        <script>
+            var require = { paths: { vs: '../node_modules/monaco-editor/min/vs' } };
+        </script>
+        <script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
+        <script src="../node_modules/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+        <script src="../node_modules/monaco-editor/min/vs/editor/editor.main.js"></script>
+
+
+    </head>
+
+    <body>
+        <div>
+            <input type="file" id="fileInput" onchange="handleFile(this.files)">
+            <button onclick="testPreview()">预览</button>
+            <button onclick="testExport()">导出</button>
+            <h2>原始数据</h2>
+            <div id="container">
+
+                <div id="editor" style=" border: 1px solid grey"></div>
+                <div id="preview"></div>
+            </div>
+
+        </div>
+        <script>
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: [JSON.stringify([[{ "dpt_des": "开发部", "doc_dt": "2013-09-09", "doc": "a001" }], [{ "pt": "pt1", "des": "des1", "due_dt": "2013-08-07", "des2": "2013-12-07" }, { "pt": "pt1", "des": "des1", "due_dt": "2013-09-14", "des2": "des21" }]], null, 2)].join('\n'),
+                language: 'json'
+            });
+        </script>
+
 </html>
