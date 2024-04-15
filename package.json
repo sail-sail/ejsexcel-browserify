@@ -32,6 +32,10 @@
     "file-saver": "2.0.5",
     "http-server": "14.1.1",
     "pako": "2.1.0",
-    "terser": "5.30.3"
+    "terser": "5.30.3",
+    "@js-preview/excel": "^1.7.5",
+    "monaco-editor": "^0.47.0"
+  },
+  "dependencies": {
   }
 }
