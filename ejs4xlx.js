@@ -1,11 +1,10 @@
-
 /*!
  * EJS
  * Copyright(c) 2012 TJ Holowaychuk <tj@vision-media.ca>
  * MIT Licensed
  */
 
-let UID = Date.now();
+let UID = 1714461881814;
 
 function uniqueID() {
 	return (UID++).toString(36);

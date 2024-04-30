@@ -4,6 +4,7 @@ const Hzip = require("./lib/hzip");
 const xml2json = require("./lib/xml2json");
 const xmldom = require("./lib/xmldom");
 const ejs4xlx = require("./ejs4xlx");
+const crc32 = require("./lib/qr-image/lib/crc32");
 
 function dirname(path) {
   return path.split('/').slice(0, -1).join('/');
@@ -723,7 +724,7 @@ async function renderExcel(exlBuf, _data_, opt) {
     } else {
       return "";
     }
-    md5Str = "a" + crypto.randomUUID().replace(/-/g, "");
+    md5Str = "a" + crc32(imgBuf);
     if (!imgBaseName) {
       imgBaseName = md5Str + ".png";
     }
